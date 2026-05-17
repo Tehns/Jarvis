@@ -21,7 +21,7 @@ Get a free Gemini API key at [aistudio.google.com](https://aistudio.google.com),
 
 ## What it does
 
-### Explain any error — just pipe it
+### Explain any error - just pipe it
 
 ```bash
 make 2>&1 | jarvis explain
@@ -40,7 +40,7 @@ Output:
   i Your Makefile links against OpenSSL but the library isn't present on this system.
 ```
 
-### Watch a command — auto-explain on failure
+### Watch a command - auto-explain on failure
 
 ```bash
 jarvis watch make
@@ -67,7 +67,7 @@ jarvis alias
   Paste into ~/.bashrc, then: source ~/.bashrc
 ```
 
-Runs entirely locally — no API call needed.
+Runs entirely locally - no API call needed.
 
 ### Ask for any command
 
@@ -142,7 +142,7 @@ history_path=/home/you/.bash_history
 | `city` | Default city for weather | `Kharkiv` |
 | `history_path` | Shell history file | *(auto-detected)* |
 
-Supports **bash, zsh, and fish** — history is auto-detected.
+Supports **bash, zsh, and fish** - history is auto-detected.
 
 ---
 
@@ -169,7 +169,7 @@ sudo dnf install gcc libcurl-devel           # Fedora
 
 - Single binary, ~100KB
 - No runtime, no interpreter, no dependencies beyond libcurl
-- Works on any Linux — x86, ARM, i686
+- Works on any Linux - x86, ARM, i686
 - Starts instantly
 
 ---
