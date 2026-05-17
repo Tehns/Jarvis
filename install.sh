@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Jarvis installer — https://github.com/Tehns/Jarvis
+# Jarvis installer - https://github.com/Tehns/Jarvis
 # Usage: curl -fsSL https://raw.githubusercontent.com/Tehns/Jarvis/main/install.sh | bash
 
 set -e
