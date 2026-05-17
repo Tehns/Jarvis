@@ -1,9 +1,9 @@
 /*
- *    ██╗  █████╗ ██████╗ ██╗   ██╗██╗███████╗
- *    ██║ ██╔══██╗██╔══██╗██║   ██║██║██╔════╝
- *    ██║ ███████║██████╔╝██║   ██║██║███████╗
- * ██ ██║ ██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║
- * █████║ ██║  ██║██║  ██║ ╚████╔╝ ██║███████║
+ *    ██╗  █████╗  ██████╗ ██╗   ██╗██╗███████╗
+ *    ██║ ██╔══██╗ ██╔══██╗██║   ██║██║██╔════╝
+ *    ██║ ███████║ ██████╔╝██║   ██║██║███████╗
+ *██  ██║ ██╔══██║ ██╔══██╗╚██╗ ██╔╝██║╚════██║
+ *╚█████╔╝██║  ██║ ██║  ██║ ╚████╔╝ ██║███████║
  * ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
  *
  *  AI-powered terminal assistant for Linux
@@ -54,7 +54,6 @@
 #define MAX_LINE        512
 #define MAX_PATH        1024
 #define MAX_CONFIG_VAL  256
-#define ALIAS_TOP       15
 #define EXPLAIN_MAX     16384
 #define GEMINI_URL      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=%s"
 
@@ -62,8 +61,6 @@
 typedef struct { char api_key[MAX_CONFIG_VAL]; char city[MAX_CONFIG_VAL]; char history_path[MAX_PATH]; } Config;
 typedef struct { char *data; size_t size; } Response;
 typedef struct { char cmds[MAX_HISTORY][MAX_LINE]; int count; } History;
-typedef struct { char cmd[MAX_LINE]; int count; } CmdFreq;
-
 /* ─── Forward declarations ────────────────────────────────────────────────── */
 static int split_args(char *working_buf, char **args, int max_args);
 
@@ -187,7 +184,7 @@ static int config_init(Config *cfg) {
         char path[MAX_PATH]; config_path(path, sizeof(path));
         FILE *f = fopen(path, "w");
         if (f) {
-            fprintf(f, "# Jarvis config - https://github.com/Tehns/Jarvis\n"
+            fprintf(f, "# Jarvis config — https://github.com/Tehns/Jarvis\n"
                        "# Get a free key at: https://aistudio.google.com\n\n"
                        "api_key=YOUR_GEMINI_API_KEY\ncity=Kharkiv\nhistory_path=%s\n",
                        cfg->history_path);
@@ -224,7 +221,7 @@ static void history_load(History *h, const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) { fprintf(stderr, RED "Cannot open history: %s\n" RESET, path); return; }
 
-    /* Seek to end and read last chunk - we want the most recent commands */
+    /* Seek to end and read last chunk — we want the most recent commands */
     fseek(f, 0, SEEK_END);
     long fsize = ftell(f);
     long chunk = (fsize > 65536) ? 65536 : fsize; /* read last 64KB */
@@ -242,7 +239,7 @@ static void history_load(History *h, const char *path) {
     /* If we seeked mid-line, discard the partial first line */
     if (fsize > chunk) fgets(line, sizeof(line), f);
 
-    /* No ceiling on total - we want all lines in the chunk so
+    /* No ceiling on total — we want all lines in the chunk so
        the backwards traversal picks the most recent unique ones */
     while (fgets(line, sizeof(line), f)) {
         if (total >= MAX_HISTORY*4) break;
@@ -279,7 +276,7 @@ static void history_context(const History *h, char *buf, size_t max) {
  * GEMINI
  * ══════════════════════════════════════════════════════════════════════════════ */
 
-/* extract_text: heap-allocates result - caller must free() */
+/* extract_text: heap-allocates result — caller must free() */
 static char *extract_text(const char *json) {
     char *s = strstr(json, "\"text\": \""); if (!s) return NULL;
     s += 9;
@@ -377,7 +374,7 @@ static char *gemini_ask(const Config *cfg, const char *prompt) {
     Response *resp = http_post(url, json); free(json);
     if (!resp) return NULL;
 
-    /* Debug: JARVIS_DEBUG=1 jarvis explain - prints raw Gemini response */
+    /* Debug: JARVIS_DEBUG=1 jarvis explain — prints raw Gemini response */
     if (getenv("JARVIS_DEBUG"))
         fprintf(stderr, DIM "\n[debug] raw response:\n%.2000s\n\n" RESET, resp->data);
 
@@ -408,7 +405,7 @@ static char *gemini_ask(const Config *cfg, const char *prompt) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
- * CMD: EXPLAIN  -  the pipe magic
+ * CMD: EXPLAIN  —  the pipe magic
  *   Usage: make 2>&1 | jarvis explain
  * ══════════════════════════════════════════════════════════════════════════════ */
 
@@ -428,7 +425,7 @@ static void cmd_explain(const Config *cfg) {
         free(buf); return;
     }
 
-    /* last 3000 chars - tail is almost always the relevant error */
+    /* last 3000 chars — tail is almost always the relevant error */
     const char *input = (total>3000) ? buf+total-3000 : buf;
 
     printf(CYAN "── Jarvis is reading the error " RESET DIM "────────────────\n\n" RESET);
@@ -438,9 +435,9 @@ static void cmd_explain(const Config *cfg) {
     snprintf(prompt, plen,
         "You are a Linux expert. A command produced this output:\n\n---\n%s\n---\n\n"
         "Reply in plain text (no markdown, no asterisks, no bullet symbols):\n"
-        "1. What went wrong - one sentence.\n"
-        "2. The exact fix - the command or config change.\n"
-        "3. Why it happened - one sentence.\n"
+        "1. What went wrong — one sentence.\n"
+        "2. The exact fix — the command or config change.\n"
+        "3. Why it happened — one sentence.\n"
         "Be direct. If multiple errors, address the root cause first.", input);
 
     char *answer = gemini_ask(cfg, prompt);
@@ -466,51 +463,45 @@ static void cmd_explain(const Config *cfg) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
- * CMD: ALIAS MINER  -  pure local, no API needed
+ * CMD: ALIAS  -  Gemini reads your history and suggests aliases
  * ══════════════════════════════════════════════════════════════════════════════ */
 
-static void alias_name(const char *cmd, char *name, size_t max) {
-    int j=0, words=0, in_word=0;
-    for (int i=0; cmd[i]&&j<(int)max-1&&words<2; i++) {
-        char c=cmd[i];
-        if (c==' '||c=='\t') { if(in_word){name[j++]='_';words++;in_word=0;} }
-        else if ((c>='a'&&c<='z')||(c>='A'&&c<='Z')||(c>='0'&&c<='9')||c=='-'||c=='.') { name[j++]=c; in_word=1; }
-    }
-    if (j>0&&name[j-1]=='_') j--;
-    name[j]='\0';
-    if (j>12) name[12]='\0';
-}
-
-static void cmd_alias(const History *h) {
-    CmdFreq freq[MAX_HISTORY*4]; int fc=0;
-    for (int i=0; i<h->count; i++) {
-        const char *cmd=h->cmds[i];
-        if (strlen(cmd)<8||strchr(cmd,'=')) continue;
-        int found=0;
-        for (int j=0; j<fc; j++) if (!strcmp(freq[j].cmd,cmd)){freq[j].count++;found=1;break;}
-        if (!found&&fc<MAX_HISTORY*4) { strncpy(freq[fc].cmd,cmd,MAX_LINE-1); freq[fc].count=1; fc++; }
-    }
-    /* sort descending */
-    for (int i=0;i<fc-1;i++) for (int j=0;j<fc-i-1;j++)
-        if (freq[j].count<freq[j+1].count) { CmdFreq t=freq[j]; freq[j]=freq[j+1]; freq[j+1]=t; }
-
+static void cmd_alias(const Config *cfg, const History *h) {
     printf(CYAN "── Alias suggestions " RESET DIM "──────────────────────────\n" RESET);
-    printf(DIM  "   Based on your %d most recent unique commands.\n\n" RESET, h->count);
+    printf(DIM  "   Sending your history to Gemini...\n\n" RESET);
 
-    int shown=0;
-    for (int i=0; i<fc&&shown<ALIAS_TOP; i++) {
-        if (freq[i].count<2||strlen(freq[i].cmd)<=10) continue;
-        char name[32]; alias_name(freq[i].cmd, name, sizeof(name));
-        if (!name[0]) continue;
-        printf(YELLOW "  alias %s=" RESET BOLD "'%s'" RESET DIM "   # used %dx\n" RESET,
-               name, freq[i].cmd, freq[i].count);
-        shown++;
+    char ctx[4096];
+    history_context(h, ctx, sizeof(ctx));
+
+    char prompt[5000];
+    snprintf(prompt, sizeof(prompt),
+        "You are a Linux shell expert. Here is a user's recent shell history:\n\n%s\n"
+        "Suggest up to 10 useful bash aliases based on commands they type repeatedly or commands that are long.\n"
+        "Reply ONLY with alias lines, one per line, in this exact format:\n"
+        "alias name='command'\n"
+        "No explanation, no markdown, no numbers, no extra text. Just the alias lines.", ctx);
+
+    char *answer = gemini_ask(cfg, prompt);
+    if (!answer) return;
+
+    /* Print each alias line */
+    char *line = strtok(answer, "\n");
+    int shown = 0;
+    while (line) {
+        char *t = line;
+        while (*t == ' ' || *t == '\t') t++;
+        if (strncmp(t, "alias ", 6) == 0) {
+            printf(YELLOW "  %s\n" RESET, t);
+            shown++;
+        }
+        line = strtok(NULL, "\n");
     }
-    if (!shown) printf(DIM "  Not enough repeated commands yet.\n" RESET);
+
+    if (!shown) printf(DIM "  No suggestions generated.\n" RESET);
     else {
-        printf(DIM "\n  Paste into your ~/.bashrc or ~/.zshrc, then run:\n" RESET);
-        printf(DIM "    source ~/.bashrc\n\n" RESET);
+        printf(DIM "\n  Paste into ~/.bashrc, then: source ~/.bashrc\n\n" RESET);
     }
+    free(answer);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -574,7 +565,7 @@ static void cmd_suggest(const Config *cfg, const History *h, const char *query) 
  * ══════════════════════════════════════════════════════════════════════════════ */
 
 static void cmd_talk(const Config *cfg) {
-    printf(GREEN "Talk mode - type " RESET BOLD "'back'" RESET GREEN " to return.\n\n" RESET);
+    printf(GREEN "Talk mode — type " RESET BOLD "'back'" RESET GREEN " to return.\n\n" RESET);
     char session[16384]={0}; int first=1;
     while (1) {
         printf(CYAN "You > " RESET);
@@ -587,7 +578,7 @@ static void cmd_talk(const Config *cfg) {
         if (first) {
             snprintf(prompt,sizeof(prompt),
                 "You are Jarvis, a sharp Linux terminal assistant. "
-                "Plain text only - no markdown, no asterisks. Be concise. User: %s", input);
+                "Plain text only — no markdown, no asterisks. Be concise. User: %s", input);
             first=0;
         } else {
             snprintf(prompt,sizeof(prompt),
@@ -663,7 +654,7 @@ static void cmd_sysinfo(void) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
- * CMD: UPDATE  -  pull and reinstall latest from GitHub
+ * CMD: UPDATE  —  pull and reinstall latest from GitHub
  * ══════════════════════════════════════════════════════════════════════════════ */
 
 static void cmd_update(void) {
@@ -671,7 +662,7 @@ static void cmd_update(void) {
     printf(DIM  "  Fetching latest from GitHub...\n\n" RESET);
     fflush(stdout);
 
-    /* curl -fsSL <url> | bash - needs shell for the pipe, but URL is hardcoded */
+    /* curl -fsSL <url> | bash — needs shell for the pipe, but URL is hardcoded */
     char *args[] = { "bash", "-c",
         "curl -fsSL https://raw.githubusercontent.com/Tehns/Jarvis/main/install.sh | bash",
         NULL };
@@ -690,11 +681,11 @@ static void cmd_update(void) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
- * CMD: WATCH  -  run a command, catch errors, explain them automatically
+ * CMD: WATCH  —  run a command, catch errors, explain them automatically
  *   Usage: jarvis watch make
  *          jarvis watch gcc foo.c
  *
- *  Uses fork+execvp - no shell injection risk.
+ *  Uses fork+execvp — no shell injection risk.
  * ══════════════════════════════════════════════════════════════════════════════ */
 
 /* Split a string into argv for execvp. Modifies working_buf in place.
@@ -785,7 +776,7 @@ static void cmd_watch(const Config *cfg, const char *cmd) {
         return;
     }
 
-    /* Command failed - read the log and explain */
+    /* Command failed — read the log and explain */
     printf("\n" RED "✗ Command failed (exit %d). Asking Jarvis...\n\n" RESET, exit_code);
     fflush(stdout);
 
@@ -807,9 +798,9 @@ static void cmd_watch(const Config *cfg, const char *cmd) {
     snprintf(prompt, plen,
         "You are a Linux expert. The command '%s' failed with this output:\n\n---\n%s\n---\n\n"
         "Reply in plain text (no markdown, no asterisks, no bullet symbols):\n"
-        "1. What went wrong - one sentence.\n"
-        "2. The exact fix - the command or config change.\n"
-        "3. Why it happened - one sentence.\n"
+        "1. What went wrong — one sentence.\n"
+        "2. The exact fix — the command or config change.\n"
+        "3. Why it happened — one sentence.\n"
         "Be direct. Address root cause first.", cmd, input);
 
     printf(CYAN "── Jarvis explains " RESET DIM "────────────────────────────\n\n" RESET);
@@ -919,9 +910,9 @@ int main(int argc, char *argv[]) {
         }
 
         if (!strcmp(argv[1],"alias")) {
-            /* alias is local-only: works even without API key */
+            if (!cfg_ok) return 1;
             History h; history_load(&h, cfg.history_path);
-            cmd_alias(&h); return 0;
+            cmd_alias(&cfg, &h); return 0;
         }
 
         /* one-shot query: jarvis "find big files" */
@@ -976,7 +967,7 @@ int main(int argc, char *argv[]) {
         if (!strcmp(input,"help"))    { cmd_help();          continue; }
         if (!strcmp(input,"sysinfo")) { cmd_sysinfo();       continue; }
         if (!strcmp(input,"talk"))    { cmd_talk(&cfg);      continue; }
-        if (!strcmp(input,"alias"))   { cmd_alias(&history); continue; }
+        if (!strcmp(input,"alias"))   { cmd_alias(&cfg, &history); continue; }
         if (!strcmp(input,"update"))  { cmd_update();        continue; }
         if (!strncmp(input,"watch",5)) {
             char *wcmd=input+5; while(*wcmd==' ') wcmd++;
