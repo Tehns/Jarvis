@@ -1,10 +1,10 @@
 /*
- *    ██╗  █████╗  ██████╗ ██╗   ██╗██╗███████╗
- *    ██║ ██╔══██╗ ██╔══██╗██║   ██║██║██╔════╝
- *    ██║ ███████║ ██████╔╝██║   ██║██║███████╗
- *██  ██║ ██╔══██║ ██╔══██╗╚██╗ ██╔╝██║╚════██║
- *╚█████╔╝██║  ██║ ██║  ██║ ╚████╔╝ ██║███████║
- * ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
+ *     ██╗  █████╗  ██████╗ ██╗   ██╗██╗███████╗
+ *     ██║ ██╔══██╗ ██╔══██╗██║   ██║██║██╔════╝
+ *     ██║ ███████║ ██████╔╝██║   ██║██║███████╗
+ * ██  ██║ ██╔══██║ ██╔══██╗╚██╗ ██╔╝██║╚════██║
+ *╚█████╔╝ ██║  ██║ ██║  ██║ ╚████╔╝ ██║███████║
+ * ╚════╝  ╚═╝  ╚═╝ ╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝
  *
  *  AI-powered terminal assistant for Linux
  *  https://github.com/Tehns/Jarvis
@@ -24,8 +24,8 @@
  *    cargo build 2>&1 | jarvis explain
  *    gcc foo.c 2>&1 | jarvis explain
  */
-
 #define _DEFAULT_SOURCE
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,6 +33,7 @@
 #include <time.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <curl/curl.h>
@@ -49,7 +50,7 @@
 #define RESET   "\033[0m"
 
 /* ─── Constants ───────────────────────────────────────────────────────────── */
-#define VERSION         "2.2.0"
+#define VERSION         "2.3.0"
 #define MAX_HISTORY     400
 #define MAX_LINE        512
 #define MAX_PATH        1024
@@ -139,7 +140,7 @@ static void config_path(char *buf, size_t len) {
 static void detect_history(char *buf, size_t len) {
     const char *home = safe_home();
     const char *hf = getenv("HISTFILE");
-    if (hf && access(hf, R_OK) == 0) { strncpy(buf, hf, len-1); return; }
+    if (hf && access(hf, R_OK) == 0) { snprintf(buf, len, "%s", hf); return; }
     const char *sh = getenv("SHELL");
     char c[4][MAX_PATH];
     snprintf(c[0], MAX_PATH, "%s/.zsh_history",  home);
@@ -147,12 +148,12 @@ static void detect_history(char *buf, size_t len) {
     snprintf(c[2], MAX_PATH, "%s/.local/share/fish/fish_history", home);
     snprintf(c[3], MAX_PATH, "%s/.history",      home);
     if (sh) {
-        if (strstr(sh,"zsh")  && access(c[0],R_OK)==0) { strncpy(buf,c[0],len-1); return; }
-        if (strstr(sh,"bash") && access(c[1],R_OK)==0) { strncpy(buf,c[1],len-1); return; }
-        if (strstr(sh,"fish") && access(c[2],R_OK)==0) { strncpy(buf,c[2],len-1); return; }
+        if (strstr(sh,"zsh")  && access(c[0],R_OK)==0) { snprintf(buf,len,"%s",c[0]); return; }
+        if (strstr(sh,"bash") && access(c[1],R_OK)==0) { snprintf(buf,len,"%s",c[1]); return; }
+        if (strstr(sh,"fish") && access(c[2],R_OK)==0) { snprintf(buf,len,"%s",c[2]); return; }
     }
-    for (int i=0; i<4; i++) if (access(c[i],R_OK)==0) { strncpy(buf,c[i],len-1); return; }
-    strncpy(buf, c[1], len-1);
+    for (int i=0; i<4; i++) if (access(c[i],R_OK)==0) { snprintf(buf,len,"%s",c[i]); return; }
+    snprintf(buf, len, "%s", c[1]);
 }
 
 static int config_load(Config *cfg) {
@@ -224,7 +225,7 @@ static void history_load(History *h, const char *path) {
     /* Seek to end and read last chunk — we want the most recent commands */
     fseek(f, 0, SEEK_END);
     long fsize = ftell(f);
-    long chunk = (fsize > 65536) ? 65536 : fsize; /* read last 64KB */
+    long chunk = (fsize > 262144) ? 262144 : fsize; /* read last 256KB */
     fseek(f, fsize - chunk, SEEK_SET);
 
     /* Heap-allocate to avoid ~1.6MB stack usage */
@@ -324,19 +325,16 @@ static char *extract_text(const char *json) {
 
 static void json_esc(const char *src, char *dst, size_t max) {
     size_t j = 0;
-    for (size_t i = 0; src[i] && j < max - 7; i++) {
+    for (size_t i = 0; src[i]; i++) {
+        if (j >= max - 7) break; /* strict headroom for any sequence */
         unsigned char c = (unsigned char)src[i];
         if      (c == '"')  { dst[j++]='\\'; dst[j++]='"';  }
         else if (c == '\\') { dst[j++]='\\'; dst[j++]='\\'; }
         else if (c == '\n') { dst[j++]='\\'; dst[j++]='n';  }
         else if (c == '\r') { dst[j++]='\\'; dst[j++]='r';  }
         else if (c == '\t') { dst[j++]='\\'; dst[j++]='t';  }
-        else if (c < 0x20) {
-            if (max - j < 7) break;
-            snprintf(dst+j, max-j, "\\u%04x", c);
-            j += 6; /* \uXXXX is always exactly 6 chars */
-        }
-        else { dst[j++] = (char)c; }
+        else if (c < 0x20)  { snprintf(dst+j, max-j, "\\u%04x", c); j += 6; }
+        else                { dst[j++] = (char)c; }
     }
     dst[j] = '\0';
 }
@@ -444,19 +442,22 @@ static void cmd_explain(const Config *cfg) {
     free(prompt); free(buf);
     if (!answer) return;
 
-    char *line = strtok(answer, "\n");
+    char *line = answer;
     int   lnum = 0;
-    while (line) {
+    while (line && *line) {
+        char *next = strchr(line, '\n');
+        if (next) *next = '\0';
         char *text = line;
         while (*text==' '||*text=='\t') text++;
         if (text[0]>='1'&&text[0]<='3'&&text[1]=='.') text+=2;
         while (*text==' ') text++;
-        if (!text[0]) { line=strtok(NULL,"\n"); continue; }
-        if      (lnum==0) printf(RED   "  ✗ %s\n" RESET, text);
-        else if (lnum==1) printf(GREEN "  ✓ %s\n" RESET, text);
-        else              printf(DIM   "  i %s\n" RESET, text);
-        lnum++;
-        line = strtok(NULL, "\n");
+        if (text[0]) {
+            if      (lnum==0) printf(RED   "  ✗ %s\n" RESET, text);
+            else if (lnum==1) printf(GREEN "  ✓ %s\n" RESET, text);
+            else              printf(DIM   "  i %s\n" RESET, text);
+            lnum++;
+        }
+        if (next) { *next = '\n'; line = next + 1; } else break;
     }
     printf("\n");
     free(answer);
@@ -809,20 +810,22 @@ static void cmd_watch(const Config *cfg, const char *cmd) {
     free(prompt);
     if (!answer) return;
 
-    /* Color-coded: red = problem, green = fix, dim = why */
-    char *line = strtok(answer, "\n");
+    char *line = answer;
     int   lnum = 0;
-    while (line) {
+    while (line && *line) {
+        char *next = strchr(line, '\n');
+        if (next) *next = '\0';
         char *text = line;
         while (*text == ' ' || *text == '\t') text++;
         if (text[0] >= '1' && text[0] <= '3' && text[1] == '.') text += 2;
         while (*text == ' ') text++;
-        if (!text[0]) { line = strtok(NULL, "\n"); continue; }
-        if      (lnum == 0) printf(RED   "  ✗ %s\n" RESET, text);
-        else if (lnum == 1) printf(GREEN "  ✓ %s\n" RESET, text);
-        else                printf(DIM   "  i %s\n" RESET, text);
-        lnum++;
-        line = strtok(NULL, "\n");
+        if (text[0]) {
+            if      (lnum == 0) printf(RED   "  ✗ %s\n" RESET, text);
+            else if (lnum == 1) printf(GREEN "  ✓ %s\n" RESET, text);
+            else                printf(DIM   "  i %s\n" RESET, text);
+            lnum++;
+        }
+        if (next) { *next = '\n'; line = next + 1; } else break;
     }
     printf("\n");
     free(answer);
@@ -847,6 +850,12 @@ static void cmd_help(void) {
 /* ══════════════════════════════════════════════════════════════════════════════
  * UI
  * ══════════════════════════════════════════════════════════════════════════════ */
+
+static void sigint_handler(int sig) {
+    (void)sig;
+    printf(RESET "\n");
+    exit(0);
+}
 
 static void startup_animation(void) {
     const char *f[]={"J","JA","JAR","JARV","JARVI","JARVIS"};
@@ -878,6 +887,7 @@ static void print_usage(void) {
  * ══════════════════════════════════════════════════════════════════════════════ */
 
 int main(int argc, char *argv[]) {
+    signal(SIGINT, sigint_handler);
 
     /* ── Flags (no config needed) ── */
     if (argc>=2) {
