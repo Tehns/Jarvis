@@ -187,7 +187,7 @@ static int config_init(Config *cfg) {
         char path[MAX_PATH]; config_path(path, sizeof(path));
         FILE *f = fopen(path, "w");
         if (f) {
-            fprintf(f, "# Jarvis config — https://github.com/Tehns/Jarvis\n"
+            fprintf(f, "# Jarvis config - https://github.com/Tehns/Jarvis\n"
                        "# Get a free key at: https://aistudio.google.com\n\n"
                        "api_key=YOUR_GEMINI_API_KEY\ncity=Kharkiv\nhistory_path=%s\n",
                        cfg->history_path);
@@ -224,7 +224,7 @@ static void history_load(History *h, const char *path) {
     FILE *f = fopen(path, "r");
     if (!f) { fprintf(stderr, RED "Cannot open history: %s\n" RESET, path); return; }
 
-    /* Seek to end and read last chunk — we want the most recent commands */
+    /* Seek to end and read last chunk - we want the most recent commands */
     fseek(f, 0, SEEK_END);
     long fsize = ftell(f);
     long chunk = (fsize > 65536) ? 65536 : fsize; /* read last 64KB */
@@ -242,7 +242,7 @@ static void history_load(History *h, const char *path) {
     /* If we seeked mid-line, discard the partial first line */
     if (fsize > chunk) fgets(line, sizeof(line), f);
 
-    /* No ceiling on total — we want all lines in the chunk so
+    /* No ceiling on total - we want all lines in the chunk so
        the backwards traversal picks the most recent unique ones */
     while (fgets(line, sizeof(line), f)) {
         if (total >= MAX_HISTORY*4) break;
@@ -279,7 +279,7 @@ static void history_context(const History *h, char *buf, size_t max) {
  * GEMINI
  * ══════════════════════════════════════════════════════════════════════════════ */
 
-/* extract_text: heap-allocates result — caller must free() */
+/* extract_text: heap-allocates result - caller must free() */
 static char *extract_text(const char *json) {
     char *s = strstr(json, "\"text\": \""); if (!s) return NULL;
     s += 9;
@@ -377,7 +377,7 @@ static char *gemini_ask(const Config *cfg, const char *prompt) {
     Response *resp = http_post(url, json); free(json);
     if (!resp) return NULL;
 
-    /* Debug: JARVIS_DEBUG=1 jarvis explain — prints raw Gemini response */
+    /* Debug: JARVIS_DEBUG=1 jarvis explain - prints raw Gemini response */
     if (getenv("JARVIS_DEBUG"))
         fprintf(stderr, DIM "\n[debug] raw response:\n%.2000s\n\n" RESET, resp->data);
 
@@ -408,7 +408,7 @@ static char *gemini_ask(const Config *cfg, const char *prompt) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
- * CMD: EXPLAIN  —  the pipe magic
+ * CMD: EXPLAIN  -  the pipe magic
  *   Usage: make 2>&1 | jarvis explain
  * ══════════════════════════════════════════════════════════════════════════════ */
 
@@ -428,7 +428,7 @@ static void cmd_explain(const Config *cfg) {
         free(buf); return;
     }
 
-    /* last 3000 chars — tail is almost always the relevant error */
+    /* last 3000 chars - tail is almost always the relevant error */
     const char *input = (total>3000) ? buf+total-3000 : buf;
 
     printf(CYAN "── Jarvis is reading the error " RESET DIM "────────────────\n\n" RESET);
@@ -438,9 +438,9 @@ static void cmd_explain(const Config *cfg) {
     snprintf(prompt, plen,
         "You are a Linux expert. A command produced this output:\n\n---\n%s\n---\n\n"
         "Reply in plain text (no markdown, no asterisks, no bullet symbols):\n"
-        "1. What went wrong — one sentence.\n"
-        "2. The exact fix — the command or config change.\n"
-        "3. Why it happened — one sentence.\n"
+        "1. What went wrong - one sentence.\n"
+        "2. The exact fix - the command or config change.\n"
+        "3. Why it happened - one sentence.\n"
         "Be direct. If multiple errors, address the root cause first.", input);
 
     char *answer = gemini_ask(cfg, prompt);
@@ -466,7 +466,7 @@ static void cmd_explain(const Config *cfg) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
- * CMD: ALIAS MINER  —  pure local, no API needed
+ * CMD: ALIAS MINER  -  pure local, no API needed
  * ══════════════════════════════════════════════════════════════════════════════ */
 
 static void alias_name(const char *cmd, char *name, size_t max) {
@@ -574,7 +574,7 @@ static void cmd_suggest(const Config *cfg, const History *h, const char *query) 
  * ══════════════════════════════════════════════════════════════════════════════ */
 
 static void cmd_talk(const Config *cfg) {
-    printf(GREEN "Talk mode — type " RESET BOLD "'back'" RESET GREEN " to return.\n\n" RESET);
+    printf(GREEN "Talk mode - type " RESET BOLD "'back'" RESET GREEN " to return.\n\n" RESET);
     char session[16384]={0}; int first=1;
     while (1) {
         printf(CYAN "You > " RESET);
@@ -663,7 +663,7 @@ static void cmd_sysinfo(void) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
- * CMD: UPDATE  —  pull and reinstall latest from GitHub
+ * CMD: UPDATE  -  pull and reinstall latest from GitHub
  * ══════════════════════════════════════════════════════════════════════════════ */
 
 static void cmd_update(void) {
@@ -671,7 +671,7 @@ static void cmd_update(void) {
     printf(DIM  "  Fetching latest from GitHub...\n\n" RESET);
     fflush(stdout);
 
-    /* curl -fsSL <url> | bash — needs shell for the pipe, but URL is hardcoded */
+    /* curl -fsSL <url> | bash - needs shell for the pipe, but URL is hardcoded */
     char *args[] = { "bash", "-c",
         "curl -fsSL https://raw.githubusercontent.com/Tehns/Jarvis/main/install.sh | bash",
         NULL };
@@ -690,11 +690,11 @@ static void cmd_update(void) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
- * CMD: WATCH  —  run a command, catch errors, explain them automatically
+ * CMD: WATCH  -  run a command, catch errors, explain them automatically
  *   Usage: jarvis watch make
  *          jarvis watch gcc foo.c
  *
- *  Uses fork+execvp — no shell injection risk.
+ *  Uses fork+execvp - no shell injection risk.
  * ══════════════════════════════════════════════════════════════════════════════ */
 
 /* Split a string into argv for execvp. Modifies working_buf in place.
@@ -785,7 +785,7 @@ static void cmd_watch(const Config *cfg, const char *cmd) {
         return;
     }
 
-    /* Command failed — read the log and explain */
+    /* Command failed - read the log and explain */
     printf("\n" RED "✗ Command failed (exit %d). Asking Jarvis...\n\n" RESET, exit_code);
     fflush(stdout);
 
@@ -807,9 +807,9 @@ static void cmd_watch(const Config *cfg, const char *cmd) {
     snprintf(prompt, plen,
         "You are a Linux expert. The command '%s' failed with this output:\n\n---\n%s\n---\n\n"
         "Reply in plain text (no markdown, no asterisks, no bullet symbols):\n"
-        "1. What went wrong — one sentence.\n"
-        "2. The exact fix — the command or config change.\n"
-        "3. Why it happened — one sentence.\n"
+        "1. What went wrong - one sentence.\n"
+        "2. The exact fix - the command or config change.\n"
+        "3. Why it happened - one sentence.\n"
         "Be direct. Address root cause first.", cmd, input);
 
     printf(CYAN "── Jarvis explains " RESET DIM "────────────────────────────\n\n" RESET);
