@@ -15,21 +15,21 @@ make
 
 ## Project structure
 
-Everything lives in `main.c` — that's intentional. Jarvis is a single-file project. Keep it that way.
+Everything lives in `main.c` - that's intentional. Jarvis is a single-file project. Keep it that way.
 
 ## How to contribute
 
 1. **Fork** the repo
-2. **Create a branch** — `git checkout -b feature/your-feature`
+2. **Create a branch** - `git checkout -b feature/your-feature`
 3. **Make your changes** in `main.c`
-4. **Test it** — `make && ./jarvis`
+4. **Test it** - `make && ./jarvis`
 5. **Open a pull request** with a clear description of what you changed and why
 
 ## Guidelines
 
 - Keep it C99, no C++ 
 - No new dependencies beyond `libcurl`
-- No new files — everything stays in `main.c`
+- No new files - everything stays in `main.c`
 - New commands follow the existing pattern: `cmd_yourcommand()` function + wired into `main()`
 - Test on at least one Linux distro before submitting
 
