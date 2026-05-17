@@ -21,6 +21,6 @@ You'll get a response within 48 hours. If the vulnerability is confirmed, a fix 
 
 ## Security notes
 
-- Your Gemini API key is stored in `~/.config/jarvis/config` — keep this file private (`chmod 600`)
-- Jarvis sends your shell history context to the Gemini API — avoid using Jarvis in environments with sensitive command history
-- `jarvis watch` uses `fork`+`execvp`, not `system()` — no shell injection risk from user input
+- Your Gemini API key is stored in `~/.config/jarvis/config` - keep this file private (`chmod 600`)
+- Jarvis sends your shell history context to the Gemini API - avoid using Jarvis in environments with sensitive command history
+- `jarvis watch` uses `fork`+`execvp`, not `system()` - no shell injection risk from user input
